@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 top="0" left="0" height="36" right="0"
+		 creationComplete="creationComplete(event)">
+	
+	<!--********* Titlebar **********-->
+	<s:SkinnableContainer id="btnMoveBar" mouseDown="onWindowMove()" left="0" right="0" doubleClickEnabled="true" doubleClick="fncMaximizeApp(event)" >
+		<s:Graphic >
+			<s:Rect  x="0" y="0" width="{btnMoveBar.width}" height="35">
+				<s:fill>
+					<s:SolidColor color="0x010101"/>
+				</s:fill>
+			</s:Rect>
+			<!--s:filters>
+			<s:DropShadowFilter blurX="15" blurY="15" quality="3" distance="2" angle="90" color="0x000000" alpha="0.3"/>
+			</s:filters-->
+		</s:Graphic>
+	</s:SkinnableContainer>
+	
+	<!--<s:ToggleButton  id="btnOpenSettings" left="10" top="8"  width="30" change="{}" 
+	
+	chromeColor="0xababab" icon="assets/images/settings2.png"
+	cornerRadius="0"
+	enabled="false"/>-->
+	
+	<!--********* Titlebar Label **********-->
+	<s:Label id="appTitle" mouseDown="onWindowMove()" text="Image viewer" x="{btnMoveBar.width/2 - appTitle.width/2}" y="{btnMoveBar.height/2 - appTitle.height/2}" 
+			 color="#DDDDDD"
+			 fontSize="11"
+			 fontWeight="bold" mouseChildren="false">
+		<s:filters>
+			<s:DropShadowFilter blurX="1" blurY="1" quality="3" distance="1" angle="90" color="0x222222" alpha="0.8"/>
+		</s:filters>
+		
+	</s:Label>
+	
+	<!--********* Titlebar Close button **********-->
+	<s:SkinnableContainer id="btnClose"  right="11" top="11" width="14" height="14"
+						  click="fncCloseApp(event)">
+		<s:Image id="imgClose" source="@Embed('assets/images/close.png')" top="0" left="0" right="0" bottom="0" alpha="0.5" 
+				 mouseOver="{imgClose.alpha=0.7}" 
+				 mouseOut="{imgClose.alpha=0.5}" />
+		
+	</s:SkinnableContainer>
+	
+	<!--********* Titlebar Maximize button **********-->
+	<s:SkinnableContainer id="btnMaximize" top="11" width="14" height="14"
+						  click="fncMaximizeApp(event)">
+		<s:Image id="imgMax" source="{imgMaximize}" top="0" left="0" right="0" bottom="0" alpha="0.5" 
+				 mouseOver="{imgMax.alpha=0.7}" 
+				 mouseOut="{imgMax.alpha=0.5}" />
+	</s:SkinnableContainer>
+	
+	<!--********* Titlebar Minimize button **********-->
+	<s:SkinnableContainer id="btnMinimize"  top="11" width="14" height="14"
+						  click="fncMinimizeApp(event)">
+		<s:Image id="imgMin" source="@Embed('assets/images/min.png')" top="0" left="0" right="0" bottom="0" alpha="0.5" 
+				 mouseOver="{imgMin.alpha=0.7}" 
+				 mouseOut="{imgMin.alpha=0.5}" />
+	</s:SkinnableContainer>
+	
+
+<fx:Script>
+	<![CDATA[
+		import mx.events.FlexEvent;
+		
+		[Embed(source="assets/images/max.png")]
+		[Bindable]
+		private var imgMaximize:Class;
+		
+		[Embed(source="assets/images/restore.png")]
+		[Bindable]
+		private var imgRestore:Class;
+		
+		private var buttonGap:int = 21;
+		
+		protected function creationComplete(event:FlexEvent):void
+		{
+			btnMaximize.right = btnClose.right + btnClose.width + buttonGap;
+			btnMinimize.right = btnMaximize.right + btnMaximize.width + buttonGap;
+		}
+		
+		//Abre o cierra el panel de "Settings";
+		/* private function onSettingsChange(e:Event):void 
+		{
+		var leftOffset:int = 10;
+		
+		//Si es mayor que cero estara visible. Se cerrará
+		if(grpSettings.left > 0)
+		{
+		leftOffset = -(grpSettings.width);
+		btnOpenSettings.selected = false;
+		}
+		
+		TweenNano.to(grpSettings,0.4, {ease:Elastic.easeOut.config(1, 0.8), left:leftOffset});
+		
+		
+		} */
+		
+		private function onWindowMove():void {
+			this.stage.nativeWindow.startMove();
+		}
+		
+		private function fncCloseApp(event:Event):void{
+			
+			stage.nativeWindow.close();
+		}
+		
+		private function fncMaximizeApp(e:Event):void
+		{
+			if(stage.nativeWindow.displayState == NativeWindowDisplayState.MAXIMIZED)
+			{
+				stage.nativeWindow.restore();
+				imgMax.source = imgMaximize;
+			}
+			else
+			{
+				stage.nativeWindow.maximize();
+				imgMax.source = imgRestore;					
+			}
+		}
+		
+		private function fncMinimizeApp(e:Event):void
+		{
+			stage.nativeWindow.minimize();
+		}	
+		
+			
+	]]>
+</fx:Script>
+	
+</s:Group>
