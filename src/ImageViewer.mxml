@@ -3,16 +3,56 @@
 					   xmlns:s="library://ns.adobe.com/flex/spark" 
 					   xmlns:mx="library://ns.adobe.com/flex/mx"
 					   showStatusBar="false"
-					   alwaysInFront="true" xmlns:com="com.*"
-					   backgroundColor="0x232323"
+					   alwaysInFront="true" xmlns:com="com.*"					   
+					   backgroundAlpha="0"					   
 					   creationComplete="creationComplete(event)">
 		
-			<com:ApplicationToolBar id="toolBar"/>
-				
-				
-			<s:Button id="btnOpen" label="Open" click="onOpenClick(event)"/>
-			<s:Image id="imgMain" left="0" right="0" top="36" bottom="0" smooth="true"/>
+	<fx:Declarations>
+		<s:State name="normal"/> 
+		<s:State name="settings"/> 
+	</fx:Declarations>
 	
+	<fx:Style source="styles/main.css"/>		
+	
+	<!--*********************************** Main Image container **************************************-->		
+	<s:SkinnableContainer id="grpContainer" left="0" right="0" top="35" bottom="0" backgroundColor="0x999999" includeIn="normal">
+		<s:Button id="btnOpen" label="Open" click="onOpenClick(event)" styleName="button" height="40" width="80"/>
+		<s:Image id="imgMain" left="0" right="0" top="0" bottom="0" smooth="true" click="onImageClick(event)" mouseDown="onImageMouseDown(event)" mouseWheel="onImageMouseWheel(event)"/>
+		
+		<s:SkinnableContainer id="grpImageNavigator" backgroundColor="0x232323" backgroundAlpha="0.5" bottom="15" left="10" right="10" height="30" visible="false">
+			<s:Label id="lblImageNavigator" textAlign="center" verticalAlign="middle" width="100%" height="100%" color="0xdedede"/>
+		</s:SkinnableContainer>
+	</s:SkinnableContainer>
+	
+	<!--*********************************** PROPERTIES CONTAINER***************************************-->
+	
+	<s:SkinnableContainer id="grpProperties" left="0" right="0" top="0" bottom="0" backgroundColor="0x343434"  includeIn="settings">
+		
+	</s:SkinnableContainer>
+		
+	
+	<!--*********************************** RESIZE HANDLERS AND TOOLBAR **************************************-->
+	<s:Group id="grpResizeHandlers" width="100%" height="100%">
+		
+	
+		<s:SkinnableContainer id="handlerLeft" backgroundColor="0x00ff00" width="10" bottom="10" top="0" alpha="0" 
+							  mouseOver="onMouseOver(event)" mouseOut="onMouseOut(event)" mouseDown="onMouseResize(event)"/>
+	
+		<s:SkinnableContainer id="handlerRight" backgroundColor="0xff0000" right="0" bottom="10" top="0" width="10" alpha="0"
+							  mouseOver="onMouseOver(event)" mouseOut="onMouseOut(event)" mouseDown="onMouseResize(event)"/>
+	
+		<s:SkinnableContainer id="handlerBottom" backgroundColor="0xff0000" bottom="0" left="10" right="10" height="10" alpha="0"
+							  mouseOver="onMouseOver(event)" mouseOut="onMouseOut(event)" mouseDown="onMouseResize(event)"/>
+	
+		<s:SkinnableContainer id="handlerBottomRight" backgroundColor="0x0000ff" bottom="0" right="0" height="10" width="10" alpha="0"
+							  mouseOver="onMouseOver(event)" mouseOut="onMouseOut(event)" mouseDown="onMouseResize(event)"/>
+	
+		<s:SkinnableContainer id="handlerBottomLeft" backgroundColor="0x0000ff" bottom="0" left="0" height="10" width="10" alpha="0"
+							  mouseOver="onMouseOver(event)" mouseOut="onMouseOut(event)" mouseDown="onMouseResize(event)"/>
+		
+	</s:Group>
+
+	<com:ApplicationTitleBar id="customTitleBar"/>
 	
 	<fx:Script>
 		<![CDATA[
@@ -21,7 +61,16 @@
 			import mx.events.ResizeEvent;
 			
 			private var _file:File;
-			private var _fileDirectory:Array;
+			private var _fileDirectoryContent:Array;
+			private var _fileName:String;
+			private var _fileIndex:int;
+			private var _filePath:String;
+			
+			private var _width:Number;
+			private var _height:Number;
+			
+			
+			private var _lso:SharedObject;
 			
 			protected function creationComplete(event:FlexEvent):void
 			{				
@@ -29,6 +78,9 @@
 				this.addEventListener(Event.RESIZE, onResize);
 				//FlexGlobals.topLevelApplication.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
 				this.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
+				imgMain.addEventListener(FlexEvent.READY, onImageReady);
+				
+				//_lso = SharedObject.getLocal("settings");
 			}
 
 			protected function onAddedToStage(event:Event):void
@@ -40,42 +92,341 @@
 				_file.addEventListener(Event.SELECT, onFileSelect);
 			}
 			
+			/** 
+			 * initialize properties of this
+			 **/
 			private function assignProperties():void
 			{
-				btnOpen.left = stage.width/2 - btnOpen.width /2;	
-				btnOpen.top = stage.height/2 - btnOpen.height /2;	
+				btnOpen.x = grpContainer.width/2 - btnOpen.width /2;	
+				btnOpen.y = grpContainer.height/2 - btnOpen.height /2;
+				
+				grpContainer.setFocus();
 			}
 			
+			/**
+			 * Parsing images found in the same directory
+			 * */
+			private function findImages(arr:Array):Array
+			{
+				var newArray:Array = new Array();
+				
+				for each (var image:Object in arr) 
+				{
+					//Comparing extension and saving images paths in new array
+					var ext:String = image.name.substr(image.name.lastIndexOf(".")+1).toLowerCase();
+					if((ext == "jpg") ||
+						(ext=="png") ||	
+						(ext == "bmp") ||
+						(ext == "gif"))
+					{
+						newArray.push(image);
+					}
+				}
+				return newArray;
+			}
+			
+			/**
+			 * find Current image index
+			 * */
+			private function findIndex(arr:Array):int
+			{
+				for (var i:int=0; i <= arr.length-1;i++) 
+				{
+					trace (arr[i].name);
+					if(arr[i].name == _file.name)
+					{
+						_fileIndex = i;
+						return i;
+					}
+					//nativePath
+					//icon
+				}
+				return 0;
+			}
+			
+			
+			/**
+			 * Show/Hide TitleBar
+			 * */	
+			private function toggleTitleBar():void
+			{
+				if(customTitleBar.visible)
+				{
+					customTitleBar.visible = false;
+					grpContainer.top = 0;
+					nativeApplication.activeWindow.height -= 35;
+				}
+				else
+				{
+					customTitleBar.visible = true;
+					grpContainer.top = 35;
+					nativeApplication.activeWindow.height += 35;
+				}
+				trace(customTitleBar.visible);
+			}
+			
+			/**
+			 * Show previous/next Image
+			 * */	
+			private function loadNextImage(action:String):void
+			{
+				if(action == "prev")
+				{
+					if(_fileIndex > 0)
+					{
+						_fileIndex -= 1;					
+					}
+				}
+				else if(action == "next")
+				{
+					if(_fileIndex < _fileDirectoryContent.length-1)
+					{
+						_fileIndex += 1;
+					}
+				}
+				
+				imgMain.source= _fileDirectoryContent[_fileIndex].url;
+				customTitleBar.title = _fileDirectoryContent[_fileIndex].name;
+				lblImageNavigator.text = "Showing "+(_fileIndex+1)+" of "+ _fileDirectoryContent.length;
+			}
+			
+			
+			/**
+			 * Resize window 
+			 * */	
+			private function resizeWindow(action:String):void
+			{				
+				var ratio:Number = 1.05;
+				switch(action)
+				{
+					case "minus":
+						nativeApplication.activeWindow.width /= ratio;
+						nativeApplication.activeWindow.height /= ratio;
+						
+					break;
+					
+					
+					case "plus":
+						nativeApplication.activeWindow.width *= ratio;
+						nativeApplication.activeWindow.height *= ratio;
+					break;
+					
+				}
+				
+			}
+			
+			/**
+			 * Change window opacity
+			 * */
+			private function changeOpacity(action:String):void
+			{
+				var ratio:Number = 0.1;
+				switch(action)
+				{
+					case "minus":
+						this.alpha = this.alpha >0.2 ? this.alpha -= ratio : 0.2
+						
+					break;
+					
+					
+					case "plus":
+						this.alpha = this.alpha < 1 ? this.alpha += ratio : 1
+					break;
+					
+				}
+			}
+			
+			/**
+			 * Fit window to image real size
+			 * */
+			private function fitToImage(img:Image):void
+			{
+				//Verify the maximum size of screen and adapt the window's size to it if the image is bigger than screen.
+				nativeApplication.activeWindow.width = img.sourceWidth				
+				nativeApplication.activeWindow.height = img.sourceHeight + customTitleBar.height -1				
+			}
+			
+			
+			//______________________________________________________________________________________________
+			//**************************************** EVENTS ********************************************//
+			
+			/**
+			 * onResize window
+			 **/
 			protected function onResize(event:ResizeEvent):void
 			{
-				// TODO Auto-generated method stub
 				assignProperties();
 			}
 			
+			/**
+			 * Open Image dialog box
+			 * */
 			protected function onOpenClick(event:MouseEvent):void
 			{
 				_file.browseForOpen("Open Image...");			
 			}
-		
 			
-			
-			
+			/**
+			 * File selected
+			 * */
 			protected function onFileSelect(e:Event):void
-			{
-				trace(e.target);
+			{								
+				//Getting the directory content
+				_filePath = _file.nativePath.substr(0,_file.nativePath.lastIndexOf('\\'))+"\\"
+				_fileDirectoryContent = _file.resolvePath(_filePath).getDirectoryListing();
+				
+				//looking for the images
+				_fileDirectoryContent = findImages(_fileDirectoryContent);
+				_fileIndex = findIndex(_fileDirectoryContent);
+				
+				grpImageNavigator.visible = true;
+				lblImageNavigator.text = "Showing "+(_fileIndex+1)+" of "+ _fileDirectoryContent.length;
+				
+				//Showing the image
 				imgMain.source = e.target.url;
+				customTitleBar.title = e.target.name;
+				btnOpen.visible = false;
+				imgMain.setFocus();				
 			}
 			
+			/**
+			 * on Key Press
+			 * **/
 			protected function onKeyDown(e:KeyboardEvent):void
 			{				
 				switch(e.keyCode)
 				{
 					case Keyboard.T:
-						toolBar.visible = toolBar.visible ? false : true;
-						trace(toolBar.visible);
+						toggleTitleBar();
+					break;
+					
+					//Navigation
+					case Keyboard.RIGHT:
+						loadNextImage("next");
+					break;
+					
+					case Keyboard.LEFT:
+						loadNextImage("prev");
+					break;
+					
+					case Keyboard.F:
+						fitToImage(imgMain);
+					break;
+									
+					//Resize
+					case Keyboard.MINUS:
+					case Keyboard.NUMPAD_SUBTRACT:
+						resizeWindow("minus");
+					break;
+					
+					case Keyboard.NUMPAD_ADD:
+						resizeWindow("plus");
+					break;
+					
+					//Change Opacity
+					case Keyboard.NUMPAD_MULTIPLY:
+						changeOpacity("plus");
+					break;
+					
+					case Keyboard.NUMPAD_DIVIDE:
+						changeOpacity("minus");
+					break;
+					
+					//Close APP
+					case Keyboard.ESCAPE:
+						nativeApplication.activeWindow.close();
+						break;
+					
+					default:
+						trace(e.keyCode);
 					break;
 				}
 			}
+
+			
+			protected function onImageReady(e:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				var img:Image = e.target as Image;
+				
+				//Comprobar la opción de los settings
+				fitToImage(img);
+				//trace("compSize: "+img.width+":"+img.height+" - ImageSize: "+img.sourceWidth+":"+img.sourceHeight);
+				
+				
+			}
+			
+			/**
+			 * Prevent the app to lose the focus
+			 * */
+			protected function onImageClick(event:MouseEvent):void
+			{
+				grpContainer.setFocus();								
+			}
+			
+			
+			
+			protected function onImageMouseDown(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				nativeApplication.activeWindow.startMove();
+			}
+			
+			protected function onImageMouseWheel(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				if(event.delta > 0)
+				{
+					resizeWindow("plus");
+				}
+				else
+				{
+					resizeWindow("minus");
+				}
+			}
+			
+			//__________________________________________________________RESIZE WINDOW CONTROLS (CORNERS)
+			
+			protected function onMouseOver(event:MouseEvent):void
+			{
+				trace("MouseOver");
+				Mouse.cursor = MouseCursor.HAND;
+			}
+			
+			protected function onMouseOut(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				Mouse.cursor = MouseCursor.ARROW;
+			}
+			
+			protected function onMouseResize(event:MouseEvent):void
+			{
+				var corner:String
+				switch(event.currentTarget)
+				{
+					case handlerLeft:
+						corner = NativeWindowResize.LEFT						
+						break;
+					
+					case handlerRight:
+						corner = NativeWindowResize.RIGHT					
+						break;
+					
+					case handlerBottom:
+						corner = NativeWindowResize.BOTTOM;					
+						break;
+					
+					case handlerBottomLeft:
+						corner = NativeWindowResize.BOTTOM_LEFT;					
+						break;
+					case handlerBottomRight:
+						corner = NativeWindowResize.BOTTOM_RIGHT;					
+						break;
+					
+				}
+				
+				nativeApplication.activeWindow.startResize(corner);
+			}			
 			
 		]]>
 	</fx:Script>

@@ -26,10 +26,11 @@
 	enabled="false"/>-->
 	
 	<!--********* Titlebar Label **********-->
-	<s:Label id="appTitle" mouseDown="onWindowMove()" text="Image viewer" x="{btnMoveBar.width/2 - appTitle.width/2}" y="{btnMoveBar.height/2 - appTitle.height/2}" 
+	<s:Label id="appTitle" mouseDown="onWindowMove()" text="{title}" x="{btnMoveBar.width/2 - appTitle.width/2}" y="{btnMoveBar.height/2 - appTitle.height/2}" 
 			 color="#DDDDDD"
 			 fontSize="11"
-			 fontWeight="bold" mouseChildren="false">
+			 fontWeight="bold" mouseChildren="false"
+			 maxWidth="250" maxDisplayedLines="1">
 		<s:filters>
 			<s:DropShadowFilter blurX="1" blurY="1" quality="3" distance="1" angle="90" color="0x222222" alpha="0.8"/>
 		</s:filters>
@@ -76,6 +77,10 @@
 		
 		private var buttonGap:int = 21;
 		
+		
+		[Bindable]
+		public var title:String = "Image Viewer v0.1";
+				
 		protected function creationComplete(event:FlexEvent):void
 		{
 			btnMaximize.right = btnClose.right + btnClose.width + buttonGap;
