@@ -5,7 +5,7 @@
 					   showStatusBar="false"
 					   alwaysInFront="true" xmlns:com="com.*"					   
 					   backgroundAlpha="0"					   
-					   creationComplete="creationComplete(event)">
+					   creationComplete="creationComplete(event)" xmlns:classes="classes.*">
 		
 	<fx:Declarations>
 		<s:State name="normal"/> 
@@ -16,9 +16,8 @@
 	
 	<!--*********************************** Main Image container **************************************-->		
 	<s:SkinnableContainer id="grpContainer" left="0" right="0" top="35" bottom="0" backgroundColor="0x999999" includeIn="normal">
-		<s:Button id="btnOpen" label="Open" click="onOpenClick(event)" styleName="button" height="40" width="80"/>
-		<s:Image id="imgMain" left="0" right="0" top="0" bottom="0" smooth="true" click="onImageClick(event)" mouseDown="onImageMouseDown(event)" mouseWheel="onImageMouseWheel(event)"/>
-		
+		<s:Button id="btnOpen" label="Open" click="onOpenClick(event)" styleName="button" height="40" width="80"/>		
+		<classes:ImageLoader id="imgLoader" left="0" right="0" top="0" bottom="0" click="onImageClick(event)" mouseDown="onImageMouseDown(event)" mouseUp="onImageMouseUp(event)"/>
 		<s:SkinnableContainer id="grpImageNavigator" backgroundColor="0x232323" backgroundAlpha="0.5" bottom="15" left="10" right="10" height="30" visible="false">
 			<s:Label id="lblImageNavigator" textAlign="center" verticalAlign="middle" width="100%" height="100%" color="0xdedede"/>
 		</s:SkinnableContainer>
@@ -56,9 +55,13 @@
 	
 	<fx:Script>
 		<![CDATA[
+			import classes.ImageLoader;
+			
 			import mx.core.FlexGlobals;
 			import mx.events.FlexEvent;
 			import mx.events.ResizeEvent;
+			
+			import spark.components.Image;
 			
 			private var _file:File;
 			private var _fileDirectoryContent:Array;
@@ -71,14 +74,27 @@
 			
 			
 			private var _lso:SharedObject;
-			
+						
 			protected function creationComplete(event:FlexEvent):void
 			{				
 				this.addEventListener(Event.ADDED_TO_STAGE, onAddedToStage);
 				this.addEventListener(Event.RESIZE, onResize);
 				//FlexGlobals.topLevelApplication.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
 				this.addEventListener(KeyboardEvent.KEY_DOWN, onKeyDown);
-				imgMain.addEventListener(FlexEvent.READY, onImageReady);
+				//imgMain.addEventListener(FlexEvent.READY, onImageReady);
+				imgLoader.addEventListener(FlexEvent.READY, onImageReady);
+				
+				/* iLoader= new ImageLoader();
+				grpContainer.addElement(iLoader);
+				iLoader.left =0;
+				iLoader.right =0;
+				iLoader.top =0;
+				iLoader.bottom =0; */
+				
+				
+				
+				
+				
 				
 				//_lso = SharedObject.getLocal("settings");
 			}
@@ -185,7 +201,8 @@
 					}
 				}
 				
-				imgMain.source= _fileDirectoryContent[_fileIndex].url;
+				//imgMain.source= _fileDirectoryContent[_fileIndex].url;
+				imgLoader.nextImage(_fileDirectoryContent[_fileIndex].url);
 				customTitleBar.title = _fileDirectoryContent[_fileIndex].name;
 				lblImageNavigator.text = "Showing "+(_fileIndex+1)+" of "+ _fileDirectoryContent.length;
 			}
@@ -239,12 +256,53 @@
 			/**
 			 * Fit window to image real size
 			 * */
-			private function fitToImage(img:Image):void
+			private function fitToImage():void
 			{
 				//Verify the maximum size of screen and adapt the window's size to it if the image is bigger than screen.
-				nativeApplication.activeWindow.width = img.sourceWidth				
-				nativeApplication.activeWindow.height = img.sourceHeight + customTitleBar.height -1				
+				var screenWidth:Number = Screen.mainScreen.visibleBounds.width;
+				var screenHeight:Number = Screen.mainScreen.visibleBounds.height;
+				var screenRatio:Number =screenWidth/ screenHeight;				
+				
+				var imageRatio:Number = imgLoader.sourceWidth / imgLoader.sourceHeight;
+				var orientation:String = (imgLoader.sourceWidth > imgLoader.sourceHeight) ? "landscape" : "portrait";  
+					
+					
+					if((imgLoader.sourceHeight >screenHeight)||(imgLoader.sourceWidth > screenWidth))
+					{						
+						//Resize Control						
+						if(orientation == "landscape")
+						{
+							//if vertical size is bigger than screen
+							if((screenWidth / imageRatio > screenHeight))
+							{
+								nativeApplication.activeWindow.height = screenHeight;
+								nativeApplication.activeWindow.width = (screenHeight - customTitleBar.height)* imageRatio;
+							} 
+							
+							else
+							{
+								nativeApplication.activeWindow.width = screenWidth				
+								nativeApplication.activeWindow.height = (screenWidth / imageRatio) + customTitleBar.height -1
+							}
+							
+						}
+						
+						else if(orientation == "portrait")
+						{
+							nativeApplication.activeWindow.height = screenHeight;
+							nativeApplication.activeWindow.width = (screenHeight - customTitleBar.height)* imageRatio;
+						}						
+					}					 
+					else
+					{
+						nativeApplication.activeWindow.width = imgLoader.sourceWidth				
+						nativeApplication.activeWindow.height = imgLoader.sourceHeight + customTitleBar.height -1
+					}
+					
+					nativeApplication.activeWindow.x = screenWidth/2 - nativeApplication.activeWindow.width/2 ;
+					nativeApplication.activeWindow.y = Screen.mainScreen.visibleBounds.y;
 			}
+				
 			
 			
 			//______________________________________________________________________________________________
@@ -283,10 +341,12 @@
 				lblImageNavigator.text = "Showing "+(_fileIndex+1)+" of "+ _fileDirectoryContent.length;
 				
 				//Showing the image
-				imgMain.source = e.target.url;
+				imgLoader.nextImage(e.target.url);
+//				imgMain.source = e.target.url;
 				customTitleBar.title = e.target.name;
 				btnOpen.visible = false;
-				imgMain.setFocus();				
+				//imgMain.setFocus();				
+				grpContainer.setFocus();				
 			}
 			
 			/**
@@ -296,6 +356,9 @@
 			{				
 				switch(e.keyCode)
 				{
+					case Keyboard.A:
+						nativeApplication.activeWindow.alwaysInFront = nativeApplication.activeWindow.alwaysInFront == true ? false : true;
+					break;
 					case Keyboard.T:
 						toggleTitleBar();
 					break;
@@ -310,7 +373,7 @@
 					break;
 					
 					case Keyboard.F:
-						fitToImage(imgMain);
+						fitToImage();
 					break;
 									
 					//Resize
@@ -347,13 +410,11 @@
 			protected function onImageReady(e:FlexEvent):void
 			{
 				// TODO Auto-generated method stub
-				var img:Image = e.target as Image;
+				//var img:Image = e.target as Image;
 				
 				//Comprobar la opción de los settings
-				fitToImage(img);
-				//trace("compSize: "+img.width+":"+img.height+" - ImageSize: "+img.sourceWidth+":"+img.sourceHeight);
-				
-				
+				fitToImage();
+				//trace("compSize: "+img.width+":"+img.height+" - ImageSize: "+img.sourceWidth+":"+img.sourceHeight);				
 			}
 			
 			/**
@@ -370,6 +431,12 @@
 			{
 				// TODO Auto-generated method stub
 				nativeApplication.activeWindow.startMove();
+				Mouse.cursor = MouseCursor.HAND;
+			}
+			
+			protected function onImageMouseUp(event:MouseEvent):void
+			{
+				Mouse.cursor = MouseCursor.ARROW;
 			}
 			
 			protected function onImageMouseWheel(event:MouseEvent):void
